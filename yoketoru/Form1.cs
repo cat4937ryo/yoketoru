@@ -12,6 +12,13 @@ namespace yoketoru
 {
     public partial class Form1 : Form
     {
+        static Random rand = new Random();
+        //敵の最大速度
+        const float ENEMY_SPEED = 10f;
+        //アイテムの最大速度
+        const float ITEM_SPEED = 10f;
+        //アイテムの残り数
+        int iTtmeCount = 0;
         enum SCENES
         {
             SC_NONE,    //無効
@@ -76,11 +83,11 @@ namespace yoketoru
             nowScene = nextScene;
             nextScene = SCENES.SC_NONE;
 
-            switch(nowScene)
+            switch (nowScene)
             {
                 //起動
                 case SCENES.SC_BOOT:
-                    for (int i=0;i<CHR_MAX;i++)
+                    for (int i = 0; i < CHR_MAX; i++)
                     {
                         type[i] = CHRTYPE.CHRTYPE_NONE;
                         labels[i] = new Label();
@@ -97,13 +104,44 @@ namespace yoketoru
                     type[0] = CHRTYPE.CHRTYPE_PLAYER;
                     vx[0] = 0;
                     vy[0] = 0;
-                    labels[0].Text = "(>_<)";
+                    labels[0].Text = "(のヮの)";
                     labels[0].Visible = true;
                     px[0] = (ClientSize.Width - labels[0].Width) / 2;
                     py[0] = (ClientSize.Height - labels[0].Height) / 2;
                     labels[0].Left = (int)px[0];
                     labels[0].Top = (int)py[0];
-                    break;
+
+                    //敵の初期化
+                    for (int i = 1; i < 1 + ENEMY_MAX; i++)
+                    {
+                        type[i] = CHRTYPE.CHRTYPE_ENEMY;
+                        vx[i] = (float)(rand.NextDouble()
+                            * (2 * ENEMY_SPEED) - ENEMY_SPEED);
+                        vy[i] = (float)(rand.NextDouble()
+                            * (2 * ENEMY_SPEED) - ENEMY_SPEED);
+
+                        labels[i].Text = "(~~__~~)";
+                        px[i] = rand.Next(ClientSize.Width - labels[i].Width);
+                        py[i] = rand.Next(ClientSize.Height - labels[i].Height);
+                    }
+                    //アイテムの初期化
+                    for (int i = 1+ENEMY_MAX;i < CHR_MAX;  i++)
+                    {
+                        type[i] = CHRTYPE.CHRTYPE_ITME;
+                        vx[i] = (float)(rand.NextDouble()
+                            * (2 * ITEM_SPEED) - ITEM_SPEED);
+                        vy[i] = (float)(rand.NextDouble()
+                            * (2 * ITEM_SPEED) - ITEM_SPEED);
+                        labels[i].Text = "☆";
+                        px[i] = rand.Next(ClientSize.Width - labels[i].Width);
+                        py[i] = rand.Next(ClientSize.Height - labels[i].Height);
+                    }
+
+                    //アイテムの残り数を設定
+                    iTtmeCount = ITEM_MAX;
+
+
+                        break;
             }
         }
 
@@ -147,7 +185,81 @@ namespace yoketoru
                     case CHRTYPE.CHRTYPE_PLAYER:
                         updatePlayer(i);
                         break;
+                    case CHRTYPE.CHRTYPE_ENEMY:
+                        updateEnemy(i);
+                        break;
+                    case CHRTYPE.CHRTYPE_ITME:
+                        updateItem(i);
+                        break;
                 }
+            }
+        }
+        /**敵の更新処理**/
+        private void updateEnemy(int i)
+        {
+            constantMove(i);
+            if(hitPlayer(i))
+            {
+                nextScene = SCENES.SC_GANEOVER;
+            }
+        }
+        /**アイテムの更新処理**/
+        private void updateItem(int i)
+        {
+            constantMove(i);
+            if (hitPlayer(i))
+            {
+                //アイテムを消す
+                type[i] = CHRTYPE.CHRTYPE_NONE;
+                //クリアチェック
+                iTtmeCount--;
+                if(iTtmeCount<=0)
+                {
+                    //アイテムを全部とった
+                    nextScene = SCENES.SC_CLEAR;
+                }
+
+            }
+        }
+
+        /**
+         * プレイヤーとiがぶつかっているか？
+         * @return bool ture=ぶつかっている　/ false=ぶつかっていない
+         * **/
+        private bool hitPlayer(int i)
+        {
+            if ((labels[i].Right > px[0])
+               && (px[i] < labels[0].Right)
+               && (labels[i].Bottom > py[0])
+               && (py[i] < labels[0].Bottom))
+            {
+                return true;
+            }
+
+                return false;
+        }
+
+        /**等速直線運動でキャラを動かす**/
+        private void constantMove(int i)
+        {
+            px[i] += vx[i];
+            py[i] += vy[i];
+
+            if(px[i] < 0)
+            {
+                vx[i] = Math.Abs(vx[i]); 
+            }
+            else if(px[i] > ClientSize.Width - labels[i].Width)
+            {
+                vx[i] = -Math.Abs(vx[i]);
+            }
+            if (py[i] < 0)
+            {
+                vy[i] = Math.Abs(vy[i]);
+            }
+            else if (py[i] > ClientSize.Height - labels[i].Height)
+            {
+                vy[i] = -Math.Abs(vy[i]);
             }
         }
 
@@ -160,7 +272,7 @@ namespace yoketoru
             py[0] = cpos.Y - labels[0].Height/2;
         }
 
-        /**描画*/
+        /**描画**/
         private void render()
         {
             switch(nowScene)
@@ -177,6 +289,10 @@ namespace yoketoru
                             labels[i].Visible = true;
                             labels[i].Left = (int)px[i];
                             labels[i].Top = (int)py[i];
+                        }
+                        else
+                        {
+                            labels[i].Visible = false;
                         }
                     }
                     break;
